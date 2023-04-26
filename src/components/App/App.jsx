@@ -2,8 +2,7 @@ import { Component } from 'react';
 import { Searchbar } from 'components/Searchbar';
 import { getImages } from 'services/api';
 import { ImageGallery } from 'components/ImageGallery';
-import { Notify } from 'notiflix/build/notiflix-notify-aio';
-import { Container, TitleH1, TitleH2 } from './App.styled';
+import { Container } from './App.styled';
 
 const Status = {
   IDLE: 'idle',
