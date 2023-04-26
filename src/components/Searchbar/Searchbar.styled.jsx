@@ -40,7 +40,7 @@ export const SearchButton = styled.button`
   transition: opacity 250ms cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   outline: none;
-
+  color: var(--color-primary-bg);
   &:hover {
     opacity: 1;
   }
@@ -67,6 +67,7 @@ export const SearchInput = styled(Field)`
   outline: none;
   padding-left: 4px;
   padding-right: 4px;
+  color: var(--color-primary-bg);
 
   &::placeholder {
     font: inherit;
