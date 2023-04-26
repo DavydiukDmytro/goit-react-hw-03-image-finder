@@ -1,9 +1,11 @@
 import { Component } from 'react';
-import { Searchbar } from 'components/Searchbar';
 import { getImages } from 'services/api';
+import { Searchbar } from 'components/Searchbar';
 import { ImageGallery } from 'components/ImageGallery';
 import { Button } from 'components/Button';
-import { Container } from './App.styled';
+import { Container, Text } from './App.styled';
+import { scroll } from 'utils/scroll';
+import { MagnifyingGlass, ThreeDots } from 'react-loader-spinner';
 
 const Status = {
   IDLE: 'idle',
@@ -14,57 +16,116 @@ const Status = {
 
 export class App extends Component {
   state = {
-    response: {},
     search: '',
+    response: {},
+    images: [],
+    totalHits: 0,
     page: 1,
+    error: `We didn't find anything`,
     isButtonLoad: false,
+    loader: false,
     status: Status.IDLE,
   };
 
   async componentDidUpdate(prevProp, prevState) {
-    const { search, page } = this.state;
+    const { search } = this.state;
     if (prevState.search !== search) {
+      scroll();
+      this.setState({ status: Status.PENDING });
+      const pageNumper = 1;
       try {
-        const response = await getImages(search, page);
+        const response = await getImages(search, pageNumper);
+
+        this.setState({
+          page: pageNumper,
+          images: response.hits,
+          totalHits: response.totalHits,
+          status: Status.RESOLVED,
+          error: `We didn't find anything`,
+        });
+        if (response.totalHits === 0) {
+          this.setState({
+            status: Status.REJECTED,
+          });
+        }
         if (response.totalHits > 12) {
           this.setState({
             isButtonLoad: true,
           });
         }
-        this.setState({
-          response,
-          status: Status.RESOLVED,
-        });
       } catch (error) {
-        console.log('gg', error);
+        this.setState({ error: error.message, status: Status.REJECTED });
       }
     }
   }
 
   handleSearch = searchWord => {
-    this.setState({ search: searchWord });
+    this.setState({ search: searchWord.trim() });
   };
 
   onClickLoad = async () => {
-    const { search, page } = this.state;
-    this.setState(s => ({ page: s.page + 1 }));
+    const { search, page, totalHits } = this.state;
     try {
-      const response = await getImages(search, page);
-      this.setState(s => ({ response }));
+      this.setState({ loader: true });
+      const pageNumber = page + 1;
+      const response = await getImages(search, pageNumber);
+      this.setState(s => ({
+        page: pageNumber,
+        images: [...s.images, ...response.hits],
+      }));
+      if (pageNumber * 12 > totalHits) {
+        this.setState({
+          isButtonLoad: false,
+        });
+      }
+      this.setState({ loader: false });
     } catch (error) {
-      console.log('gg', error);
+      this.setState({ error: error.message, status: Status.REJECTED });
     }
   };
 
   render() {
-    const { status, response, isButtonLoad } = this.state;
-    const images = response.hits;
+    const { status, images, isButtonLoad, loader } = this.state;
     const { handleSearch, onClickLoad } = this;
     return (
       <Container>
         <Searchbar onSubmit={handleSearch} />
-        {status === 'idle' && <p>Введіть слово пошуку</p>}
-        {status === 'resolved' && <ImageGallery images={images} />}
+        {status === 'idle' && <Text>Enter a keyword and click search</Text>}
+        {status === 'resolved' && (
+          <>
+            <ImageGallery images={images} />
+            {loader && (
+              <ThreeDots
+                height="80"
+                width="80"
+                radius="9"
+                color="#9fa9b5"
+                ariaLabel="three-dots-loading"
+                wrapperStyle={{ marginLeft: 'auto', marginRight: 'auto' }}
+                wrapperClassName=""
+                visible={true}
+              />
+            )}
+          </>
+        )}
+        {status === 'pending' && (
+          <MagnifyingGlass
+            visible={true}
+            height="200"
+            width="200"
+            ariaLabel="MagnifyingGlass-loading"
+            wrapperStyle={{ marginLeft: 'auto', marginRight: 'auto' }}
+            wrapperClass="MagnifyingGlass-wrapper"
+            glassColor="#fff"
+            color="#9fa9b5"
+          />
+        )}
+        {status === 'rejected' && (
+          <>
+            <Text>Sorry something went wrong!</Text>
+            <Text>Error: {this.state.error}</Text>
+          </>
+        )}
         {isButtonLoad && <Button onClickLoad={onClickLoad} />}
       </Container>
     );
