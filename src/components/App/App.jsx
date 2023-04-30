@@ -17,7 +17,6 @@ const Status = {
 export class App extends Component {
   state = {
     search: '',
-    response: {},
     images: [],
     totalHits: 0,
     page: 1,
@@ -28,60 +27,49 @@ export class App extends Component {
   };
 
   async componentDidUpdate(prevProp, prevState) {
-    const { search } = this.state;
-    if (prevState.search !== search) {
-      scroll();
-      this.setState({ status: Status.PENDING });
-      const pageNumper = 1;
-      try {
-        const response = await getImages(search, pageNumper);
-
-        this.setState({
-          page: pageNumper,
-          images: response.hits,
-          totalHits: response.totalHits,
-          status: Status.RESOLVED,
-          error: `We didn't find anything`,
-        });
-        if (response.totalHits === 0) {
-          this.setState({
-            status: Status.REJECTED,
-          });
-        }
-        if (response.totalHits > 12) {
-          this.setState({
-            isButtonLoad: true,
-          });
-        }
-      } catch (error) {
-        this.setState({ error: error.message, status: Status.REJECTED });
-      }
+    const { search, page } = this.state;
+    if (prevState.search !== search || prevState.page !== page) {
+      this.featchImages(search, page);
     }
   }
 
-  handleSearch = searchWord => {
-    this.setState({ search: searchWord.trim() });
-  };
-
-  onClickLoad = async () => {
-    const { search, page, totalHits } = this.state;
+  featchImages = async (search, page) => {
     try {
-      this.setState({ loader: true });
-      const pageNumber = page + 1;
-      const response = await getImages(search, pageNumber);
-      this.setState(s => ({
-        page: pageNumber,
-        images: [...s.images, ...response.hits],
-      }));
-      if (pageNumber * 12 > totalHits) {
-        this.setState({
-          isButtonLoad: false,
-        });
+      const response = await getImages(search, page);
+      const { hits, totalHits } = response;
+      if (hits.length === 0) {
+        return this.setState({ status: Status.REJECTED });
       }
-      this.setState({ loader: false });
+      const countLoadedPhotos = hits.length + this.state.images.length;
+      if (countLoadedPhotos < totalHits) {
+        this.setState({ isButtonLoad: true });
+      } else {
+        this.setState({ isButtonLoad: false });
+      }
+      this.setState(prevS => ({
+        images: [...prevS.images, ...hits],
+        totalHits: totalHits,
+        status: Status.RESOLVED,
+      }));
     } catch (error) {
       this.setState({ error: error.message, status: Status.REJECTED });
     }
+  };
+
+  handleSearch = searchWord => {
+    scroll();
+    this.setState({
+      images: [],
+      search: searchWord.trim(),
+      page: 1,
+      status: Status.PENDING,
+      isButtonLoad: false,
+      error: `We didn't find anything`,
+    });
+  };
+
+  onClickLoad = async () => {
+    this.setState(prevS => ({ page: prevS.page + 1 }));
   };
 
   render() {
